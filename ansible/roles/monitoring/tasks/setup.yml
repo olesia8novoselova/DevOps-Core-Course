@@ -1,0 +1,64 @@
+---
+- name: Ensure monitoring directory exists
+  ansible.builtin.file:
+    path: "{{ monitoring_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Ensure loki and promtail subdirs exist
+  ansible.builtin.file:
+    path: "{{ monitoring_dir }}/{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - loki
+    - promtail
+    - prometheus
+    - grafana/provisioning/datasources
+    - grafana/provisioning/dashboards
+    - grafana/dashboards
+
+- name: Template Loki config
+  ansible.builtin.template:
+    src: loki-config.yml.j2
+    dest: "{{ monitoring_dir }}/loki/config.yml"
+    mode: "0644"
+
+- name: Template Promtail config
+  ansible.builtin.template:
+    src: promtail-config.yml.j2
+    dest: "{{ monitoring_dir }}/promtail/config.yml"
+    mode: "0644"
+
+- name: Template Prometheus config
+  ansible.builtin.template:
+    src: prometheus.yml.j2
+    dest: "{{ monitoring_dir }}/prometheus/prometheus.yml"
+    mode: "0644"
+
+- name: Provision Grafana data sources (Loki + Prometheus)
+  ansible.builtin.copy:
+    src: grafana/provisioning/datasources/datasources.yml
+    dest: "{{ monitoring_dir }}/grafana/provisioning/datasources/datasources.yml"
+    mode: "0644"
+
+- name: Provision Grafana dashboards provider
+  ansible.builtin.copy:
+    src: grafana/provisioning/dashboards/dashboards.yml
+    dest: "{{ monitoring_dir }}/grafana/provisioning/dashboards/dashboards.yml"
+    mode: "0644"
+
+- name: Provision Grafana dashboards (JSON)
+  ansible.builtin.copy:
+    src: "grafana/dashboards/{{ item }}"
+    dest: "{{ monitoring_dir }}/grafana/dashboards/{{ item }}"
+    mode: "0644"
+  loop:
+    - app-metrics-dashboard.json
+    - logs-dashboard.json
+
+- name: Template docker-compose for monitoring
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ monitoring_dir }}/docker-compose.yml"
+    mode: "0644"
